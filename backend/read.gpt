@@ -12,3 +12,4 @@ args: dir: Directory to save the created files to
 3. Split the created text into 3 parts, save the text to "${dir}/story-${INDEX}.txt"
 4. For each text part, come up with a keyword or a phrase for a 1024x1792 b-roll image, generate and save then to: "${dir}/b-roll-${INDEX}.png"
 5. For each text part, generate speech files and save then to: "${dir}/voiceover-${INDEX}". Dont pass the file type, use the default value.
+6. Run speech2text for all 3 *.mp3 files inside ${dir} and save results to 3 seperate files in ${dir}.
