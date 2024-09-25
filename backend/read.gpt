@@ -1,6 +1,7 @@
 tools: sys.write, sys.read, sys,download, sys.find
 tools: github.com/gptscript-ai/browser
 tools: github.com/gptscript-ai/image-generation
+tools: github.com/nw0rn/text2speech-gptscript
 
 args: url: Link to the article or page
 args: dir: Directory to save the created files to
@@ -9,3 +10,4 @@ args: dir: Directory to save the created files to
 2. Create a tldr text version of it for an instagram reel or a tiktok video. No emojis, max 100 words.
 3. Split the created text into 3 parts, save the text to "${dir}/story-${INDEX}.txt"
 4. For each text part, come up with a keyword or a phrase for a 1024x1792 b-roll image, generate and save then to: "${dir}/b-roll-${INDEX}.png"
+5. For each text part, generate speech files and save then to: "${dir}/voiceover-${INDEX}". Dont pass the file type, use the default value.
