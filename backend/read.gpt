@@ -2,6 +2,7 @@ tools: sys.write, sys.read, sys,download, sys.find
 tools: github.com/gptscript-ai/browser
 tools: github.com/gptscript-ai/image-generation
 tools: github.com/nw0rn/text2speech-gptscript
+tools: github.com/dejwid/speech2text-gptscript
 
 args: url: Link to the article or page
 args: dir: Directory to save the created files to
