@@ -9,7 +9,12 @@ import path from "path";
 
 // Setting express server
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 app.use(express.static("stories"));
 
 // Variables
@@ -37,7 +42,7 @@ app.get("/create-story", async (req, res) => {
 
     return res.json(dir);
   } catch (error) {
-    console.error(e);
+    console.error(error);
     return res.json("error");
   }
 });
@@ -131,5 +136,15 @@ app.get("/build-video", async (req, res) => {
   return res.json(`${id}/final.mp4`);
 });
 
+app.get("/samples", (req, res) => {
+  const stories = fs.readdirSync("./story-data").filter((dir) => {
+    return (
+      dir.match(/^[a-z0-9]{6,}$/) &&
+      fs.existsSync(`./story-data/${dir}/final.mp4`)
+    );
+  });
+  res.json(stories);
+});
+
 // App listinig on localhost:8888
-app.listen(8888, () => console.log("Server is going on port 3000"));
+app.listen(8888, () => console.log("Server is going on port 8888"));
