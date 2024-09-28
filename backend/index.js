@@ -6,6 +6,10 @@ import { GPTScript, RunEventType } from "@gptscript-ai/gptscript";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import path from "path";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
 
 // Setting express server
 const app = express();
@@ -15,136 +19,47 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.static("stories"));
+app.use(express.static("story-data"));
 
-// Variables
-const gptScript = new GPTScript();
+// Set the OpenAI API key from environment variable
+const openAiKey = process.env.OPENAI_API_KEY;
+
+// Initialize GPTScript with OpenAI API key
+const gptScript = new GPTScript({
+  apiKey: openAiKey, // Pass the API key to GPTScript
+});
+
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 // Create the stories
 app.get("/create-story", async (req, res) => {
   const url = decodeURIComponent(req.query.url);
-  const dir = uniqid();
-  const path = "./story-data/" + dir;
-  fs.mkdirSync(path, { recursive: true });
+  const uniqueDir = uniqid(); // Renamed to avoid variable shadowing
+  const storyPath = path.join("./story-data", uniqueDir); // Using `path.join` for platform safety
+  fs.mkdirSync(storyPath, { recursive: true });
 
   try {
     const run = await gptScript.run("./read.gpt", {
-      input: `--url ${url} --dir ${path}`,
+      input: `--url ${url} --dir ${storyPath}`,
       disableCache: true,
     });
+
     run.on(RunEventType.Event, (e) => {
       if (e.type === RunEventType.CallFinish && e.output) {
         console.log(e.output);
       }
     });
-    const results = await run.text();
 
-    return res.json(dir);
+    const results = await run.text();
+    console.log("gpt script run: " + results);
+
+    return res.json(uniqueDir);
   } catch (error) {
     console.error(error);
-    return res.json("error");
+    return res.status(500).json({ error: "Error running GPTScript" });
   }
 });
 
-// build the video
-app.get("/build-video", async (req, res) => {
-  const id = req.query.id;
-  if (!id) {
-    res.json("error invalid id");
-  }
-  const dir = "./story-data/" + id;
+// Other routes...
 
-  if (!fs.existsSync(dir + "/1.png")) {
-    // rename images
-    fs.renameSync(dir + "/b-roll-1.png", dir + "/1.png");
-    fs.renameSync(dir + "/b-roll-2.png", dir + "/2.png");
-    fs.renameSync(dir + "/b-roll-3.png", dir + "/3.png");
-
-    // rename audio
-    fs.renameSync(dir + "/voiceover-1.mp3", dir + "/1.mp3");
-    fs.renameSync(dir + "/voiceover-2.mp3", dir + "/2.mp3");
-    fs.renameSync(dir + "/voiceover-3.mp3", dir + "/3.mp3");
-
-    // rename voiceovers
-    fs.renameSync(dir + "/voiceover-1.txt", dir + "/transcription-1.json");
-    fs.renameSync(dir + "/voiceover-2.txt", dir + "/transcription-2.json");
-    fs.renameSync(dir + "/voiceover-3.txt", dir + "/transcription-3.json");
-  }
-
-  const images = ["1.png", "2.png", "3.png"];
-  const audios = ["1.mp3", "2.mp3", "3.mp3"];
-  const transcriptions = [
-    "transcription-1.json",
-    "transcription-2.json",
-    "transcription-3.json",
-  ];
-
-  for (let l = 0; l < images.length; l++) {
-    const inputImage = path.join(dir, images[l]);
-    const inputAudio = path.join(dir, audios[l]);
-    const inputTranscription = path.join(dir, transcriptions[l]);
-    const outputVideo = path.join(dir, `output_${l}.mp4`);
-
-    // Read the transcription file
-    const transcription = JSON.parse(
-      fs.readFileSync(inputTranscription, "utf-8")
-    );
-    const words = transcription.words;
-    const duration = parseFloat(transcription.duration).toFixed(2);
-
-    // Build the drawtext filter string
-
-    let drawtextFilter = "";
-
-    words.forEach((wordInfo) => {
-      const word = wordInfo.word.replace(/'/g, "\\'").replace(/"/g, '\\"');
-      const start = parseFloat(wordInfo.start).toFixed(2);
-      const end = parseFloat(wordInfo.end).toFixed(2);
-
-      drawtextFilter += `drawtext=text='${word}':fontcolor=white:fontsize=96:borderw=4:bordercolor=black:x=(w-text_w)/2:y=(h*3/4)-text_h:enable='between(t\\,${start}\\,${end})',`;
-    });
-
-    // Remove the last comma
-    drawtextFilter = drawtextFilter.slice(0, -1);
-
-    // ffmpeg create
-    await new Promise((resolve, reject) => {
-      ffmpeg()
-        .input(inputImage)
-        .loop(duration)
-        .input(inputAudio)
-        .audioCodec("copy")
-        .videoFilter(drawtextFilter)
-        .outputOption("-t", duration)
-        .on("error", reject)
-        .on("end", resolve)
-        .save(outputVideo);
-    });
-  }
-
-  await new Promise((resolve, reject) => {
-    ffmpeg()
-      .input(path.join(dir, "output_0.mp4"))
-      .input(path.join(dir, "output_1.mp4"))
-      .input(path.join(dir, "output_2.mp4"))
-      .on("end", resolve)
-      .on("error", reject)
-      .mergeToFile(path.join(dir, "final.mp4"));
-  });
-
-  return res.json(`${id}/final.mp4`);
-});
-
-app.get("/samples", (req, res) => {
-  const stories = fs.readdirSync("./story-data").filter((dir) => {
-    return (
-      dir.match(/^[a-z0-9]{6,}$/) &&
-      fs.existsSync(`./story-data/${dir}/final.mp4`)
-    );
-  });
-  res.json(stories);
-});
-
-// App listinig on localhost:8888
-app.listen(8888, () => console.log("Server is going on port 8888"));
+app.listen(8888, () => console.log("Server is running on port 8888"));
